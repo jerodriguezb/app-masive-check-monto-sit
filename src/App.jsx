@@ -24,24 +24,53 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const randomDelay = () =>
   Math.floor(Math.random() * (DELAY_RANGE.max - DELAY_RANGE.min + 1) + DELAY_RANGE.min);
 
-function normalizeRow(identificacion, payload) {
-  const debt = Array.isArray(payload?.deudas) ? payload.deudas?.[0] ?? {} : payload ?? {};
-
-  return {
+function normalizeRows(identificacion, payload) {
+  const baseRow = {
     identificacion,
-    denominacion: payload?.denominacion ?? debt?.denominacion ?? '',
-    entidad: debt?.entidad ?? debt?.entidadNombre ?? '',
-    situacion: debt?.situacion ?? debt?.codigoSituacion ?? '',
-    fechaSit1: debt?.fechaSit1 ?? debt?.fechaActualizacion ?? payload?.fecha ?? '',
-    monto: debt?.monto ?? debt?.montoTotal ?? '',
-    diasAtrasoPago: debt?.diasAtrasoPago ?? '',
-    refinanciaciones: debt?.refinanciaciones ?? '',
-    recategorizacionOblig: debt?.recategorizacionOblig ?? '',
-    situacionJuridica: debt?.situacionJuridica ?? '',
-    irrecDisposicionTecnica: debt?.irrecDisposicionTecnica ?? '',
-    enRevision: debt?.enRevision ?? '',
-    procesoJud: debt?.procesoJud ?? '',
+    denominacion: '',
+    entidad: '',
+    situacion: '',
+    fechaSit1: '',
+    monto: '',
+    diasAtrasoPago: '',
+    refinanciaciones: '',
+    recategorizacionOblig: '',
+    situacionJuridica: '',
+    irrecDisposicionTecnica: '',
+    enRevision: '',
+    procesoJud: '',
   };
+
+  const results = payload?.results;
+  const denominacion = results?.denominacion ?? '';
+  const periodos = Array.isArray(results?.periodos) ? results.periodos : [];
+
+  const rows = periodos.flatMap((periodo) => {
+    const entidades = Array.isArray(periodo?.entidades) ? periodo.entidades : [];
+    if (!entidades.length) {
+      return [];
+    }
+
+    return entidades.map((entidad) => ({
+      ...baseRow,
+      identificacion,
+      denominacion,
+      entidad: entidad?.entidad ?? '',
+      situacion: entidad?.situacion ?? '',
+      fechaSit1: entidad?.fechaSit1 ?? '',
+      monto: entidad?.monto ?? '',
+      diasAtrasoPago: entidad?.diasAtrasoPago ?? '',
+      refinanciaciones: entidad?.refinanciaciones ?? '',
+      recategorizacionOblig: entidad?.recategorizacionOblig ?? '',
+      situacionJuridica: entidad?.situacionJuridica ?? '',
+      irrecDisposicionTecnica: entidad?.irrecDisposicionTecnica ?? '',
+      enRevision: entidad?.enRevision ?? '',
+      procesoJud: entidad?.procesoJud ?? '',
+    }));
+  });
+
+  if (rows.length) return rows;
+  return [{ ...baseRow, identificacion, denominacion }];
 }
 
 function App() {
@@ -104,7 +133,7 @@ function App() {
     URL.revokeObjectURL(url);
   }, [results]);
 
-  const fetchDebt = useCallback(async (identificacion) => {
+  const fetchDebtRows = useCallback(async (identificacion) => {
     const baseRow = {
       identificacion,
       denominacion: '',
@@ -129,15 +158,18 @@ function App() {
         signal: controller.signal,
       });
       if (!response.ok) {
-        return { ...baseRow, situacion: `Error ${response.status}` };
+        return [{ ...baseRow, situacion: `Error ${response.status}` }];
       }
       const payload = await response.json();
-      return normalizeRow(identificacion, payload);
+      if (payload?.status && payload.status !== 200) {
+        return [{ ...baseRow, situacion: `Error ${payload.status}` }];
+      }
+      return normalizeRows(identificacion, payload);
     } catch (error) {
       if (error.name === 'AbortError') {
-        return { ...baseRow, situacion: 'Consulta cancelada' };
+        return [{ ...baseRow, situacion: 'Consulta cancelada' }];
       }
-      return { ...baseRow, situacion: error?.message ?? 'Error desconocido' };
+      return [{ ...baseRow, situacion: error?.message ?? 'Error desconocido' }];
     }
   }, []);
 
@@ -159,10 +191,10 @@ function App() {
       if (cancelled) return;
 
       setStatus(`Consultando ${identificacion}...`);
-      const row = await fetchDebt(identificacion);
+      const rows = await fetchDebtRows(identificacion);
       if (cancelled) return;
 
-      setResults((prev) => [...prev, row]);
+      setResults((prev) => [...prev, ...rows]);
       setCurrentIndex((prev) => prev + 1);
     };
 
@@ -171,7 +203,7 @@ function App() {
       cancelled = true;
       abortRef.current?.abort();
     };
-  }, [currentIndex, fetchDebt, isRunning, queue]);
+  }, [currentIndex, fetchDebtRows, isRunning, queue]);
 
   const progress = useMemo(() => {
     if (!queue.length) return 0;
