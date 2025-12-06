@@ -1,16 +1,16 @@
-# React + Vite
+# Chequeo masivo de deudas (BCRA)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación React con Vite que permite consultar la API pública del BCRA `https://api.bcra.gob.ar/centraldedeudores/v1.0/Deudas/{identificacion}` usando múltiples CUILs cargados desde un archivo CSV.
 
-Currently, two official plugins are available:
+## Funcionalidades
+- Carga de un archivo `.csv` con una identificación por línea.
+- Procesamiento secuencial con esperas aleatorias de 5 a 8 segundos entre solicitudes para proteger la API.
+- Acumulación de resultados en una tabla con las columnas exigidas por el enunciado.
+- Descarga del CSV de resultados en cualquier momento sin interrumpir el proceso.
+- Controles para pausar/reanudar y reiniciar el flujo.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Scripts
+- `npm install` para instalar dependencias.
+- `npm run dev` para levantar el entorno de desarrollo.
+- `npm run build` para generar los artefactos de producción.
+- `npm run preview` para previsualizar la build.
