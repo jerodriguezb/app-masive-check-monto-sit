@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-const API_URL = 'https://api.bcra.gob.ar/centraldedeudores/v1.0/Deudas/';
+const API_URL = 'https://api.bcra.gob.ar/centraldedeudores/v1.0/Deudas';
 const OUTPUT_HEADERS = [
   'identificacion',
   'denominacion',
@@ -86,7 +86,7 @@ function App() {
 
   const fetchDebt = async (identificacion) => {
     try {
-      const response = await fetch(`${API_URL}${encodeURIComponent(identificacion)}`);
+      const response = await fetch(`${API_URL}/${encodeURIComponent(identificacion)}`);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
