@@ -1,16 +1,17 @@
-# React + Vite
+# Central de Deudores - Lotes CSV
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación React (Node 22.17.1) que permite cargar un archivo CSV con CUIL/CUIT, consultarlos uno a uno en la API pública del BCRA con esperas aleatorias de 5 a 8 segundos y descargar un CSV de resultados en cualquier momento.
 
-Currently, two official plugins are available:
+## Requisitos
+- Node.js 22.17.1
+- npm
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Cómo usar
+1. Instala dependencias: `npm install`.
+2. Ejecuta el entorno de desarrollo: `npm run dev` y abre la URL que muestre Vite.
+3. Sube un archivo `.csv` con un CUIL/CUIT por línea.
+4. Pulsa **Iniciar**. Cada consulta se hace con una pausa aleatoria entre 5 y 8 segundos.
+5. Puedes pulsar **Descargar CSV** en cualquier momento para obtener los resultados acumulados sin detener el proceso. Usa **Detener** si quieres pausar las consultas.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Columnas exportadas
+`identificacion, denominacion, entidad, situacion, fechaSit1, monto, diasAtrasoPago, refinanciaciones, recategorizacionOblig, situacionJuridica, irrecDisposicionTecnica, enRevision, procesoJud`.
