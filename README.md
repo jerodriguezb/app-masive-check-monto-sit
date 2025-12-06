@@ -1,16 +1,38 @@
-# React + Vite
+# Central de Deudores – Consulta masiva
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación React + Vite que permite cargar un CSV con múltiples CUIL/CUIT y consultar la API pública del BCRA
+(<https://api.bcra.gob.ar/centraldedeudores/v1.0/Deudas/identificacion>). Cada consulta se ejecuta de forma
+secuencial con una espera aleatoria entre 5 y 8 segundos para cuidar el servicio. Los resultados se van
+acumulando en memoria y se pueden descargar en cualquier momento en formato CSV sin detener el procesamiento.
 
-Currently, two official plugins are available:
+## Requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js 18+
+- npm
 
-## React Compiler
+## Puesta en marcha
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+La aplicación quedará disponible (por defecto) en <http://localhost:5173>.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Uso
+
+1. Prepara un archivo `.csv` con una columna que contenga los CUIL/CUIT a consultar (uno por línea).
+2. Haz clic en **Cargar CSV de CUIL/CUIT** y selecciona el archivo.
+3. La app leerá cada identificación, consultará la API con una pausa aleatoria de 5 a 8 segundos entre llamadas
+   y mostrará los resultados en la tabla.
+4. El botón **Descargar resultados CSV** está disponible en todo momento para bajar el progreso acumulado sin
+   frenar el proceso.
+
+## Formato del CSV de salida
+
+Las columnas generadas son:
+
+```
+identificacion, denominacion, entidad, situacion, fechaSit1, monto, diasAtrasoPago, refinanciaciones,
+recategorizacionOblig, situacionJuridica, irrecDisposicionTecnica, enRevision, procesoJud
+```
