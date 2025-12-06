@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chequeo masivo de CUIL</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f7f8fb;
+        color: #1f2937;
+      }
+      header {
+        background: #0f766e;
+        color: white;
+        padding: 16px 24px;
+      }
+      main {
+        padding: 24px;
+        max-width: 960px;
+        margin: 0 auto;
+      }
+      .card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        margin-bottom: 24px;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      button {
+        background: #0f766e;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+      th,
+      td {
+        border: 1px solid #e5e7eb;
+        padding: 8px;
+        font-size: 14px;
+        text-align: left;
+      }
+      th {
+        background: #f1f5f9;
+      }
+      .status {
+        font-weight: 700;
+      }
+      .download {
+        text-decoration: none;
+        color: white;
+      }
+      .hint {
+        color: #4b5563;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Verificador masivo de deudas BCRA</h1>
+      <p>Sube un CSV con CUIL/CUIT. La app consulta con demoras aleatorias de 5 a 8 segundos.</p>
+    </header>
+    <main>
+      <section class="card">
+        <h2>1. Subir archivo</h2>
+        <form id="upload-form" class="row">
+          <input type="file" id="file-input" accept=".csv" required />
+          <button type="submit" id="start-btn">Comenzar</button>
+        </form>
+        <p class="hint">Formato: una identificación por línea. El proceso corre en segundo plano y puedes descargar los resultados en cualquier momento.</p>
+      </section>
+
+      <section class="card">
+        <h2>2. Estado del proceso</h2>
+        <p>Trabajo: <span id="job-id">-</span></p>
+        <p>
+          Progreso: <span id="progress">0</span> / <span id="total">0</span>
+          (<span class="status" id="status">sin iniciar</span>)
+        </p>
+        <div class="row">
+          <button id="download-btn" disabled>
+            <a id="download-link" class="download" download>Descargar CSV parcial</a>
+          </button>
+          <span class="hint">Puedes descargar sin detener el procesamiento.</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>3. Resultados</h2>
+        <div style="overflow-x: auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Identificación</th>
+                <th>Denominación</th>
+                <th>Entidad</th>
+                <th>Situación</th>
+                <th>Fecha Sit1</th>
+                <th>Monto</th>
+                <th>Días atraso</th>
+                <th>Refinanciaciones</th>
+                <th>Recategorización oblig.</th>
+                <th>Situación jurídica</th>
+                <th>Irrecuperable</th>
+                <th>En revisión</th>
+                <th>Proceso judicial</th>
+                <th>Mensaje</th>
+              </tr>
+            </thead>
+            <tbody id="results-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById('upload-form');
+      const fileInput = document.getElementById('file-input');
+      const startBtn = document.getElementById('start-btn');
+      const jobSpan = document.getElementById('job-id');
+      const progressSpan = document.getElementById('progress');
+      const totalSpan = document.getElementById('total');
+      const statusSpan = document.getElementById('status');
+      const resultsBody = document.getElementById('results-body');
+      const downloadBtn = document.getElementById('download-btn');
+      const downloadLink = document.getElementById('download-link');
+
+      let currentJobId = null;
+      let pollTimer = null;
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!fileInput.files.length) return;
+
+        startBtn.disabled = true;
+        statusSpan.textContent = 'iniciando...';
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        try {
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Error al subir el archivo');
+          }
+          const data = await response.json();
+          currentJobId = data.jobId;
+          jobSpan.textContent = data.jobId;
+          totalSpan.textContent = data.total;
+          progressSpan.textContent = '0';
+          statusSpan.textContent = 'en progreso';
+          downloadBtn.disabled = false;
+          downloadLink.href = `/api/jobs/${data.jobId}/download`;
+          if (pollTimer) clearInterval(pollTimer);
+          pollTimer = setInterval(pollStatus, 2000);
+        } catch (error) {
+          alert(error.message);
+          startBtn.disabled = false;
+          statusSpan.textContent = 'error';
+        }
+      });
+
+      async function pollStatus() {
+        if (!currentJobId) return;
+        try {
+          const response = await fetch(`/api/jobs/${currentJobId}`);
+          if (!response.ok) {
+            throw new Error('No se pudo obtener el estado del trabajo');
+          }
+          const data = await response.json();
+          progressSpan.textContent = data.processed;
+          totalSpan.textContent = data.total;
+          statusSpan.textContent = data.status;
+          renderResults(data.results || []);
+          if (data.status === 'completed' || data.status === 'failed') {
+            clearInterval(pollTimer);
+            startBtn.disabled = false;
+            if (data.error) alert(data.error);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
+      function renderResults(rows) {
+        resultsBody.innerHTML = '';
+        rows.forEach((row) => {
+          const tr = document.createElement('tr');
+          const columns = [
+            'identificacion',
+            'denominacion',
+            'entidad',
+            'situacion',
+            'fechaSit1',
+            'monto',
+            'diasAtrasoPago',
+            'refinanciaciones',
+            'recategorizacionOblig',
+            'situacionJuridica',
+            'irrecDisposicionTecnica',
+            'enRevision',
+            'procesoJud',
+            'mensaje',
+          ];
+          columns.forEach((key) => {
+            const td = document.createElement('td');
+            td.textContent = row[key] ?? '';
+            tr.appendChild(td);
+          });
+          resultsBody.appendChild(tr);
+        });
+      }
+    </script>
+  </body>
+</html>
