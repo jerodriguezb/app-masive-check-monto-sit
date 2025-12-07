@@ -3,6 +3,7 @@ import Papa from 'papaparse';
 
 const API_URL = 'https://api.bcra.gob.ar/centraldedeudores/v1.0/Deudas/';
 const DELAY_RANGE = { min: 5000, max: 8000 };
+const RETRY_ATTEMPTS = 3;
 
 const COLUMNS = [
   'identificacion',
@@ -79,10 +80,16 @@ function App() {
   const [results, setResults] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [status, setStatus] = useState('Esperando archivo CSV...');
+  const [theme, setTheme] = useState('light');
+  const autoDownloadedRef = useRef(false);
   const abortRef = useRef(null);
 
   const parsedCount = results.length;
   const pendingCount = queue.length - parsedCount;
+
+  useEffect(() => {
+    document.body.classList.toggle('theme-dark', theme === 'dark');
+  }, [theme]);
 
   const loadCsv = useCallback((file) => {
     Papa.parse(file, {
@@ -99,6 +106,7 @@ function App() {
         setResults([]);
         setCurrentIndex(0);
         setIsRunning(false);
+        autoDownloadedRef.current = false;
         setStatus(
           items.length
             ? `Archivo listo. ${items.length} CUIL/CUIT cargados.`
@@ -153,37 +161,50 @@ function App() {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    try {
-      const response = await fetch(`${API_URL}${identificacion}`, {
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        return [{ ...baseRow, situacion: `Error ${response.status}` }];
-      }
-      const payload = await response.json();
-      if (payload?.status && payload.status !== 200) {
-        return [{ ...baseRow, situacion: `Error ${payload.status}` }];
-      }
-      const rows = normalizeRows(identificacion, payload);
-      if (!rows.length) return rows;
+    for (let attempt = 1; attempt <= RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        const response = await fetch(`${API_URL}${identificacion}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}`);
+        }
+        const payload = await response.json();
+        if (payload?.status && payload.status !== 200) {
+          return [{ ...baseRow, situacion: `Error ${payload.status}` }];
+        }
+        const rows = normalizeRows(identificacion, payload);
+        if (!rows.length) return rows;
 
-      const totalMonto = rows.reduce((acc, row) => acc + Number(row.monto || 0), 0);
-      const totalRow = {
-        ...baseRow,
-        identificacion,
-        denominacion: rows[0]?.denominacion ?? '',
-        entidad: 'TOTAL',
-        monto: totalMonto,
-      };
+        const totalMonto = rows.reduce((acc, row) => acc + Number(row.monto || 0), 0);
+        const totalRow = {
+          ...baseRow,
+          identificacion,
+          denominacion: rows[0]?.denominacion ?? '',
+          entidad: 'TOTAL',
+          monto: totalMonto,
+        };
 
-      return [...rows, totalRow];
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        return [{ ...baseRow, situacion: 'Consulta cancelada' }];
+        return [...rows, totalRow];
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          return [{ ...baseRow, situacion: 'Consulta cancelada' }];
+        }
+
+        if (attempt < RETRY_ATTEMPTS) {
+          setStatus(
+            `Conexión interrumpida para ${identificacion}. Reintentando (${attempt + 1}/${RETRY_ATTEMPTS})...`
+          );
+          await sleep(1000 * attempt);
+          continue;
+        }
+
+        return [{ ...baseRow, situacion: error?.message ?? 'Error desconocido' }];
       }
-      return [{ ...baseRow, situacion: error?.message ?? 'Error desconocido' }];
     }
-  }, []);
+
+    return [{ ...baseRow, situacion: 'Error desconocido' }];
+  }, [setStatus]);
 
   useEffect(() => {
     if (!isRunning) return undefined;
@@ -228,6 +249,7 @@ function App() {
       return;
     }
     setIsRunning(true);
+    autoDownloadedRef.current = false;
     setStatus('Iniciando consultas...');
   }, [queue.length]);
 
@@ -238,6 +260,15 @@ function App() {
   }, []);
 
   const rowsPreview = useMemo(() => queue.join(', '), [queue]);
+
+  useEffect(() => {
+    const completed = !isRunning && queue.length > 0 && currentIndex >= queue.length && results.length > 0;
+    if (completed && !autoDownloadedRef.current) {
+      autoDownloadedRef.current = true;
+      downloadCsv();
+      setStatus('Proceso completado. CSV descargado automáticamente.');
+    }
+  }, [currentIndex, downloadCsv, isRunning, queue.length, results.length]);
 
   return (
     <div className="container">
@@ -250,9 +281,23 @@ function App() {
               5 a 8 segundos entre pedidos para no sobrecargar el servicio.
             </p>
           </div>
-          <span className="badge" aria-label="Versión">
-            Node 22.17.1
-          </span>
+          <div className="header-controls">
+            <div className="theme-toggle" aria-label="Cambiar tema">
+              <span aria-hidden="true">☀️</span>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={theme === 'dark'}
+                  onChange={(event) => setTheme(event.target.checked ? 'dark' : 'light')}
+                />
+                <span className="slider" />
+              </label>
+              <span aria-hidden="true">🌙</span>
+            </div>
+            <span className="badge" aria-label="Versión">
+              Node 22.17.1
+            </span>
+          </div>
         </div>
 
         <label>

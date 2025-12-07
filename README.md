@@ -6,8 +6,10 @@ Aplicación React (Vite) compatible con Node 22.17.1 para consultar la API públ
 - Carga de archivos `.csv` con identificaciones.
 - Procesamiento secuencial con demoras aleatorias entre 5 y 8 segundos por consulta para respetar la API.
 - Acumulación continua de resultados en memoria.
-- Descarga del CSV parcial o final sin pausar el proceso en curso.
+- Descarga del CSV parcial o final sin pausar el proceso en curso (y descarga automática al completar la cola).
 - Posibilidad de pausar manualmente las consultas.
+- Reintentos automáticos ante caídas de conexión con la API para continuar sin recargar la página.
+- Interruptor para cambiar entre modo claro y oscuro.
 
 ## Requisitos
 - Node `22.17.1` (verificado con `nvm` en el entorno de desarrollo).
