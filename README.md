@@ -1,16 +1,33 @@
-# React + Vite
+# App de chequeo masivo BCRA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación React (Vite) compatible con Node 22.17.1 para consultar la API pública de Central de Deudores del BCRA a partir de un archivo CSV con múltiples CUIL/CUIT.
 
-Currently, two official plugins are available:
+## Características
+- Carga de archivos `.csv` con identificaciones.
+- Procesamiento secuencial con demoras aleatorias entre 5 y 8 segundos por consulta para respetar la API.
+- Acumulación continua de resultados en memoria.
+- Descarga del CSV parcial o final sin pausar el proceso en curso.
+- Posibilidad de pausar manualmente las consultas.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Requisitos
+- Node `22.17.1` (verificado con `nvm` en el entorno de desarrollo).
 
-## React Compiler
+## Puesta en marcha
+```bash
+npm install
+npm run dev
+```
+El servidor de desarrollo queda disponible (por defecto en `http://localhost:5173`).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Para generar una versión lista para producción:
+```bash
+npm run build
+```
 
-## Expanding the ESLint configuration
+## Uso
+1. Inicia la app y sube un archivo CSV que contenga una columna con los CUIL/CUIT a consultar.
+2. Presiona **Iniciar proceso** para comenzar las consultas.
+3. Observa el progreso y la tabla de resultados. El CSV acumulado puede descargarse en cualquier momento con el botón **Descargar CSV parcial** sin interrumpir el chequeo.
+4. Usa **Pausar** si necesitas detener temporalmente las consultas.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Las columnas generadas en el CSV de salida son: `identificacion`, `denominacion`, `entidad`, `situacion`, `fechaSit1`, `monto`, `diasAtrasoPago`, `refinanciaciones`, `recategorizacionOblig`, `situacionJuridica`, `irrecDisposicionTecnica`, `enRevision` y `procesoJud`.
